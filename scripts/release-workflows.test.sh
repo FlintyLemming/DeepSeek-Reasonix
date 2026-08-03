@@ -992,7 +992,8 @@ write_desktop_manifest() {
 			},
 			downloads: {
 				"Reasonix-darwin-universal.dmg": asset("Reasonix-darwin-universal.dmg"),
-				"Reasonix-windows-amd64.zip": asset("Reasonix-windows-amd64.zip")
+				"Reasonix-windows-amd64.zip": asset("Reasonix-windows-amd64.zip"),
+				"Reasonix-linux-amd64.rpm": asset("Reasonix-linux-amd64.rpm")
 			}
 		}
 	' >"$output"
@@ -1123,6 +1124,23 @@ jq 'del(.downloads["Reasonix-windows-amd64.zip"])' \
 expect_invalid_desktop_manifest "partial downloads in a legacy Preview manifest" legacy-preview \
 	"$desktop_preview_version" "https://dl.reasonix.io/desktop-preview/" \
 	"$test_root/desktop-partial-legacy-downloads.json"
+# The .rpm download postdates immutable releases already published without it.
+# A legacy manifest may omit it entirely, but a new publication must ship it.
+jq 'del(.downloads["Reasonix-linux-amd64.rpm"])' \
+	"$desktop_stable_manifest" >"$test_root/desktop-pre-rpm-legacy-stable.json"
+bash "$desktop_validator" legacy-stable "$desktop_stable_version" \
+	"$desktop_stable_base" "$test_root/desktop-pre-rpm-legacy-stable.json"
+expect_invalid_desktop_manifest "a pre-rpm manifest as a new Stable publication" stable \
+	"$desktop_stable_version" "$desktop_stable_base" \
+	"$test_root/desktop-pre-rpm-legacy-stable.json"
+jq 'del(.downloads["Reasonix-linux-amd64.rpm"])' \
+	"$desktop_preview_manifest" >"$test_root/desktop-pre-rpm-legacy-preview.json"
+bash "$desktop_validator" legacy-preview "$desktop_preview_version" \
+	"$desktop_preview_base" "$test_root/desktop-pre-rpm-legacy-preview.json"
+jq '.downloads["Reasonix-linux-amd64.rpm"].size = 0' \
+	"$desktop_stable_manifest" >"$test_root/desktop-zero-size-rpm.json"
+expect_invalid_desktop_manifest "a zero-byte rpm download" stable "$desktop_stable_version" \
+	"$desktop_stable_base" "$test_root/desktop-zero-size-rpm.json"
 expect_invalid_desktop_manifest "a Preview manifest as Stable" stable "$desktop_preview_version" \
 	"$desktop_preview_base" "$desktop_preview_manifest"
 expect_invalid_desktop_manifest "a non-official asset base" preview "$desktop_preview_version" \

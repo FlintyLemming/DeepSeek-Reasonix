@@ -22,14 +22,19 @@
 !/build/darwin/icon.icns
 !/build/darwin/appicon.svg
 
-# Commit the hand-written Linux .deb packaging inputs and app icon assets.
-# `wails build` does not generate these, so they must live in git. The .deb is built
-# by scripts/desktop-build.sh's linux branch via goreleaser/nfpm. Parent un-ignored first.
+# Commit the hand-written Linux .deb/.rpm packaging inputs and app icon assets.
+# `wails build` does not generate these, so they must live in git. The .deb/.rpm
+# are built by scripts/desktop-build.sh's linux branch via goreleaser/nfpm.
+# Parent un-ignored first.
 !/build/linux
 /build/linux/*
 !/build/linux/nfpm.yaml
+!/build/linux/nfpm-rpm.yaml
+!/build/linux/rpm-postinstall.sh
+!/build/linux/rpm-postremove.sh
 !/build/linux/reasonix.desktop
 !/build/linux/io.reasonix.desktop.update.policy
+!/build/linux/trayicon.png
 !/build/linux/icons
 !/build/linux/icons/**
 

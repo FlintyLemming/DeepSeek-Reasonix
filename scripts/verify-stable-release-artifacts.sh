@@ -43,6 +43,7 @@ jq -e '
   ([.assets[].name] as $names |
     ($names | index("latest.json")) and
     (["Reasonix-darwin-universal.dmg", "Reasonix-linux-amd64.deb",
+      "Reasonix-linux-amd64.rpm",
       "Reasonix-linux-amd64.tar.gz", "Reasonix-windows-amd64-installer.exe",
       "Reasonix-windows-arm64-installer.exe"] |
      all(. as $required | ($names | index($required)) and ($names | index($required + ".minisig")))))

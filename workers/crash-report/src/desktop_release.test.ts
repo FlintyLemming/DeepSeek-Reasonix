@@ -31,6 +31,7 @@ function desktopManifest(version: string, base?: string) {
     downloads: {
       "Reasonix-darwin-universal.dmg": asset("Reasonix-darwin-universal.dmg"),
       "Reasonix-windows-amd64.zip": asset("Reasonix-windows-amd64.zip"),
+      "Reasonix-linux-amd64.rpm": asset("Reasonix-linux-amd64.rpm"),
     },
   };
 }
@@ -187,6 +188,13 @@ describe("desktop Preview release gateway", () => {
       ["invalid website download", (manifest) => {
         manifest.downloads["Reasonix-windows-amd64.zip"].size = 0;
       }],
+      ["invalid optional rpm download", (manifest) => {
+        manifest.downloads["Reasonix-linux-amd64.rpm"].size = 0;
+      }],
+      ["hostile optional rpm download", (manifest) => {
+        const url = "https://evil.invalid/desktop-v1.2.0-preview.7/Reasonix-linux-amd64.rpm";
+        Object.assign(manifest.downloads["Reasonix-linux-amd64.rpm"], { url, sig: `${url}.minisig` });
+      }],
       ["bad SHA", (manifest) => {
         manifest.platforms["darwin-arm64"].sha256 = "A".repeat(64);
       }],
@@ -274,6 +282,21 @@ describe("desktop Stable GitHub fallback", () => {
     const invalidResponse = await handleDesktopReleaseManifest("stable");
     expect(invalidResponse.status).toBe(502);
     expect(emptyFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats the rpm download as optional for manifests that predate it", async () => {
+    const preRpm = desktopManifest("v1.18.0");
+    Reflect.deleteProperty(preRpm.downloads, "Reasonix-linux-amd64.rpm");
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify(preRpm), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleDesktopReleaseManifest("stable");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-reasonix-release-source")).toBe("r2-stable");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("uses /releases/latest and requires the release tag to match the manifest version", async () => {

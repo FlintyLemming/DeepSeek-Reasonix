@@ -46,6 +46,7 @@ function desktopManifest(version, base) {
     downloads: {
       "Reasonix-darwin-universal.dmg": asset("Reasonix-darwin-universal.dmg"),
       "Reasonix-windows-amd64.zip": asset("Reasonix-windows-amd64.zip"),
+      "Reasonix-linux-amd64.rpm": asset("Reasonix-linux-amd64.rpm"),
     },
   };
 }
@@ -61,6 +62,7 @@ function desktopGitHubRelease(version = "v1.17.21") {
     "Reasonix-linux-amd64.deb",
     "Reasonix-darwin-universal.dmg",
     "Reasonix-windows-amd64.zip",
+    "Reasonix-linux-amd64.rpm",
   ];
   return {
     tag_name: tag,
@@ -241,6 +243,39 @@ test("Desktop manifests accept only official versions and old or unified asset b
   );
   const unifiedBase = "https://github.com/esengine/DeepSeek-Reasonix/releases/download/v1.18.0/";
   assert.equal(desktopReleaseModel(desktopManifest("v1.18.0", unifiedBase))?.assets["Reasonix-linux-amd64.deb"], `${unifiedBase}Reasonix-linux-amd64.deb`);
+});
+
+test("Desktop rpm download is optional but strictly validated when present", () => {
+  const base = "https://dl.reasonix.io/desktop-v1.18.0/";
+  const withRpm = desktopManifest("v1.18.0", base);
+  assert.equal(
+    desktopReleaseModel(withRpm, "stable")?.assets["Reasonix-linux-amd64.rpm"],
+    `${base}Reasonix-linux-amd64.rpm`,
+  );
+
+  // Immutable releases published before the rpm existed stay valid without it.
+  const legacy = desktopManifest("v1.18.0", base);
+  delete legacy.downloads["Reasonix-linux-amd64.rpm"];
+  const legacyModel = desktopReleaseModel(legacy, "stable");
+  assert.equal(legacyModel?.version, "v1.18.0");
+  assert.equal(legacyModel?.assets["Reasonix-linux-amd64.rpm"], undefined);
+
+  // A present-but-hostile rpm must reject the whole manifest.
+  const hostile = desktopManifest("v1.18.0", base);
+  const url = "https://evil.invalid/desktop-v1.18.0/Reasonix-linux-amd64.rpm";
+  Object.assign(hostile.downloads["Reasonix-linux-amd64.rpm"], { url, sig: `${url}.minisig` });
+  assert.equal(desktopReleaseModel(hostile, "stable"), null);
+});
+
+test("Desktop GitHub release keeps working without the optional rpm", () => {
+  const release = desktopGitHubRelease();
+  assert.ok(desktopGitHubReleaseModel(release)?.assets["Reasonix-linux-amd64.rpm"]);
+
+  const withoutRpm = copy(release);
+  withoutRpm.assets = withoutRpm.assets.filter((asset) => asset.name !== "Reasonix-linux-amd64.rpm");
+  const model = desktopGitHubReleaseModel(withoutRpm);
+  assert.equal(model?.version, "v1.17.21");
+  assert.equal(model?.assets["Reasonix-linux-amd64.rpm"], undefined);
 });
 
 test("Desktop manifests reject hostile URLs and incomplete integrity metadata", () => {

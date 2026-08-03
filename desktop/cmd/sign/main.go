@@ -44,6 +44,7 @@ var platforms = []string{"darwin-arm64", "darwin-amd64", "windows-amd64", "windo
 var websiteDownloads = map[string]struct{}{
 	"Reasonix-darwin-universal.dmg": {},
 	"Reasonix-windows-amd64.zip":    {},
+	"Reasonix-linux-amd64.rpm":      {},
 }
 
 func main() {
@@ -209,7 +210,8 @@ func signFiles(files []string) error {
 //
 // Portable updater channels land in platforms (tarballs/installers). Debian/Ubuntu
 // .deb packages land only in native_packages so older clients keep resolving the
-// tarball under platforms["linux-amd64"].
+// tarball under platforms["linux-amd64"]. The Fedora/RHEL .rpm is a human
+// download only and lands in downloads.
 func genManifest(dir, version, tag string, notesVersions ...string) error {
 	repo := os.Getenv("GITHUB_REPOSITORY")
 	if repo == "" || repo == "esengine/reasonix" {
@@ -297,6 +299,12 @@ func matchArtifact(name string) (key, kind string) {
 				return p, artifactNative
 			}
 		}
+		return "", ""
+	}
+	// .rpm is a Fedora/RHEL human download — the in-app updater's privileged
+	// path is apt/dpkg-only. Keep it out of platforms so it never shadows the
+	// linux-amd64 tarball key; websiteDownloads lists it under downloads.
+	if strings.HasSuffix(name, ".rpm") {
 		return "", ""
 	}
 	// The Windows updater channel is the per-arch -installer.exe; the portable .zip

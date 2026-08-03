@@ -104,11 +104,24 @@ jq -e \
 	(if $legacy and (.downloads == null)
 		then true
 		else
-			(.downloads | exact_keys([
-				"Reasonix-darwin-universal.dmg",
-				"Reasonix-windows-amd64.zip"
-			])) and
-			(.downloads["Reasonix-darwin-universal.dmg"] | valid_asset("Reasonix-darwin-universal.dmg")) and
-			(.downloads["Reasonix-windows-amd64.zip"] | valid_asset("Reasonix-windows-amd64.zip"))
+			# The Fedora/RHEL .rpm download was added after immutable releases
+			# already shipped; legacy manifests may legitimately lack it, but
+			# when present it must be a fully valid asset. New publications
+			# always require it. Bind .downloads first: jq evaluates exact_keys
+			# arguments against the function input, not the manifest root.
+			(.downloads) as $dl |
+			($dl | exact_keys(
+				["Reasonix-darwin-universal.dmg", "Reasonix-windows-amd64.zip"] +
+				(if ($legacy and ($dl | has("Reasonix-linux-amd64.rpm") | not))
+					then []
+					else ["Reasonix-linux-amd64.rpm"]
+				end)
+			)) and
+			($dl["Reasonix-darwin-universal.dmg"] | valid_asset("Reasonix-darwin-universal.dmg")) and
+			($dl["Reasonix-windows-amd64.zip"] | valid_asset("Reasonix-windows-amd64.zip")) and
+			(if ($dl | has("Reasonix-linux-amd64.rpm"))
+				then ($dl["Reasonix-linux-amd64.rpm"] | valid_asset("Reasonix-linux-amd64.rpm"))
+				else $legacy
+			end)
 	end)
 ' "$manifest" >/dev/null

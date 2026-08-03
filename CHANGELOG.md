@@ -29,6 +29,12 @@ branch.
   hatch.
 - Added `/status` details for the active model, effort, cache, Git state,
   background jobs, work profile, and provider balance where available.
+- Added a **Fedora/RHEL `.rpm`** to the Linux desktop release artifacts. It is
+  built alongside the `.deb` by `scripts/desktop-build.sh` via nfpm, signed,
+  and published to the release and the official download page as a
+  human-download asset. The privileged in-app updater remains apt/dpkg-only,
+  so rpm installs detect newer versions and link to the download page instead
+  of self-installing.
 
 ### Changed
 

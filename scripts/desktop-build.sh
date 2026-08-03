@@ -11,6 +11,7 @@
 #            Reasonix-windows-<arch>.zip                 (portable human download)
 #   Linux:   Reasonix-linux-<arch>.tar.gz                (desktop + guard + CLI; portable updater)
 #            Reasonix-linux-<arch>.deb                   (Debian/Ubuntu package; native updater)
+#            Reasonix-linux-<arch>.rpm                   (Fedora/RHEL package; human download)
 #
 # Usage: scripts/desktop-build.sh <os/arch> <version> [channel]
 #   e.g. scripts/desktop-build.sh darwin/arm64 v1.1.0
@@ -313,6 +314,34 @@ linux)
 	dpkg-deb --field "$deb_path" Depends | grep -F 'pkexec' >/dev/null
 	dpkg-deb --contents "$deb_path" | grep -E 'usr/lib/reasonix/reasonix-update-helper' >/dev/null
 	dpkg-deb --contents "$deb_path" | grep -E 'usr/share/polkit-1/actions/io.reasonix.desktop.update.policy' >/dev/null
+	# .rpm for Fedora/RHEL. Human-download artifact only — the in-app updater's
+	# privileged path is apt/dpkg-only, so the rpm ships without the update
+	# helper/Polkit policy and rpm installs use the manual update banner.
+	# nfpm's semver version schema maps X.Y.Z-rc.N to RPM's tilde ordering
+	# (Version: X.Y.Z~rc.N, Release: 1), which sorts below the stable X.Y.Z.
+	if [[ "$ver_body" == *-* ]]; then
+		rpm_pre="${ver_body#*-}"
+		rpm_version="${ver_body%%-*}~${rpm_pre//-/_}"
+	else
+		rpm_version="$ver_body"
+	fi
+	RPM_VERSION="$ver_body" RPM_ARCH="$arch" \
+		nfpm package --config build/linux/nfpm-rpm.yaml --packager rpm \
+		--target "$ROOT/dist/${APPNAME}-linux-${arch}.rpm"
+	# Contract smoke: package identity, tilde prerelease ordering, RPM-family
+	# dependencies, and the apt-only update helper staying out of the rpm.
+	rpm_path="$ROOT/dist/${APPNAME}-linux-${arch}.rpm"
+	rpm -qp --qf '%{NAME}\n' "$rpm_path" | grep -x 'reasonix-desktop' >/dev/null
+	rpm -qp --qf '%{VERSION}\n' "$rpm_path" | grep -x "$rpm_version" >/dev/null
+	rpm -qp --qf '%{RELEASE}\n' "$rpm_path" | grep -x '1' >/dev/null
+	rpm -qp --requires "$rpm_path" | grep -x 'webkit2gtk4.1' >/dev/null
+	rpm -qp --requires "$rpm_path" | grep -x 'gtk3' >/dev/null
+	rpm -qpl "$rpm_path" | grep -E 'usr/bin/reasonix-desktop$' >/dev/null
+	rpm -qpl "$rpm_path" | grep -E 'usr/share/applications/reasonix.desktop$' >/dev/null
+	if rpm -qpl "$rpm_path" | grep -E 'reasonix-update-helper|polkit-1/actions' >/dev/null; then
+		echo "rpm must not ship the apt-only update helper or Polkit policy" >&2
+		exit 1
+	fi
 	;;
 *)
 	echo "unsupported os: $os" >&2

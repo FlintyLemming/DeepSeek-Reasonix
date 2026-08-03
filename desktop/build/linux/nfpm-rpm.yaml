@@ -1,0 +1,96 @@
+# nfpm config for the Linux .rpm package (Fedora/RHEL family). Mirrors
+# nfpm.yaml's .deb but with RPM-side names and no apt-only pieces: the
+# in-app update helper + Polkit policy only support apt/dpkg, so the .rpm
+# ships without them and rpm installs resolve to the manual update path.
+# scripts/desktop-build.sh's linux branch runs `nfpm package --packager rpm`
+# after `wails build`, from the desktop/ dir (paths below are relative to
+# desktop/).
+#
+# $RPM_VERSION and $RPM_ARCH are exported by desktop-build.sh. RPM_VERSION is
+# the plain semver body (X.Y.Z, prereleases as X.Y.Z-rc.N): nfpm's semver
+# version schema maps the prerelease suffix to RPM's tilde ordering
+# (Version: X.Y.Z~rc.N), which sorts below the matching stable X.Y.Z on
+# rpm >= 4.10 (all webkit2gtk4.1-era distros). $RPM_ARCH is the Go arch name;
+# nfpm converts it to RPM nomenclature (amd64 -> x86_64, arm64 -> aarch64).
+name: "reasonix-desktop"
+arch: "${RPM_ARCH}"
+platform: "linux"
+version: "${RPM_VERSION}"
+release: "1"
+priority: "optional"
+maintainer: "esengine <esengine@users.noreply.github.com>"
+description: |
+  Reasonix desktop — a Wails shell around the Go kernel.
+vendor: "Reasonix Contributors"
+homepage: "https://github.com/esengine/DeepSeek-Reasonix"
+license: "MIT"
+# Runtime libraries the WebKitGTK 4.1 build links against (-tags webkit2_41).
+# Fedora/RHEL package names: gtk3 and webkit2gtk4.1 ship from Fedora 40 /
+# RHEL 9 onward, matching the .deb's libgtk-3-0 / libwebkit2gtk-4.1-0.
+depends:
+  - gtk3
+  - webkit2gtk4.1
+# Keep the icon cache and the application menu database fresh on
+# install/upgrade/remove; both no-op safely when the tools are absent.
+scripts:
+  postinstall: ./build/linux/rpm-postinstall.sh
+  postremove: ./build/linux/rpm-postremove.sh
+contents:
+  - src: ./build/bin/reasonix-desktop
+    dst: /usr/bin/reasonix-desktop
+    file_info:
+      mode: 0755
+  - src: ./build/bin/reasonix-launcher
+    dst: /usr/bin/reasonix-launcher
+    file_info:
+      mode: 0755
+  - src: ./build/bin/reasonix
+    dst: /usr/bin/reasonix
+    file_info:
+      mode: 0755
+  - src: ./build/linux/reasonix.desktop
+    dst: /usr/share/applications/reasonix.desktop
+    file_info:
+      mode: 0644
+  # appicon.png is 1024x1024 — not a standard hicolor size dir, so install it under
+  # the size-agnostic pixmaps path that the .desktop's `Icon=reasonix-desktop` finds.
+  - src: ./build/appicon.png
+    dst: /usr/share/pixmaps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/16x16/apps/reasonix-desktop.png
+    dst: /usr/share/icons/hicolor/16x16/apps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/24x24/apps/reasonix-desktop.png
+    dst: /usr/share/icons/hicolor/24x24/apps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/32x32/apps/reasonix-desktop.png
+    dst: /usr/share/icons/hicolor/32x32/apps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/48x48/apps/reasonix-desktop.png
+    dst: /usr/share/icons/hicolor/48x48/apps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/64x64/apps/reasonix-desktop.png
+    dst: /usr/share/icons/hicolor/64x64/apps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/128x128/apps/reasonix-desktop.png
+    dst: /usr/share/icons/hicolor/128x128/apps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/256x256/apps/reasonix-desktop.png
+    dst: /usr/share/icons/hicolor/256x256/apps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/512x512/apps/reasonix-desktop.png
+    dst: /usr/share/icons/hicolor/512x512/apps/reasonix-desktop.png
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/scalable/apps/reasonix-desktop.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/reasonix-desktop.svg
+    file_info:
+      mode: 0644

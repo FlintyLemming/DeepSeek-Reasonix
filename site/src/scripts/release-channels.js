@@ -10,7 +10,14 @@ const DESKTOP_ASSETS = [
   ["downloads", "Reasonix-darwin-universal.dmg", "Reasonix-darwin-universal.dmg"],
   ["downloads", "Reasonix-windows-amd64.zip", "Reasonix-windows-amd64.zip"],
 ];
-const DESKTOP_ASSET_NAMES = new Set(DESKTOP_ASSETS.map(([, , name]) => name));
+// Optional assets follow the same strict validation when present, but immutable
+// releases published before they existed stay valid without them.
+const DESKTOP_OPTIONAL_ASSETS = [
+  ["downloads", "Reasonix-linux-amd64.rpm", "Reasonix-linux-amd64.rpm"],
+];
+const DESKTOP_ASSET_NAMES = new Set(
+  [...DESKTOP_ASSETS, ...DESKTOP_OPTIONAL_ASSETS].map(([, , name]) => name),
+);
 const OFFICIAL_DESKTOP_RELEASE_TAG = /^(?:desktop-)?(v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const MAX_RELEASE_ASSET_SIZE = 1 << 30;
@@ -185,7 +192,7 @@ function normalizeDesktopManifest(manifest, requestedChannel) {
 
   const allowedBases = desktopAssetBases(parsed);
   let selectedBase = "";
-  for (const [group, key, name] of DESKTOP_ASSETS) {
+  const validateAsset = (group, key, name) => {
     const asset = manifest?.[group]?.[key];
     if (
       !asset ||
@@ -197,7 +204,7 @@ function normalizeDesktopManifest(manifest, requestedChannel) {
       typeof asset.sha256 !== "string" ||
       !SHA256.test(asset.sha256)
     ) {
-      return null;
+      return false;
     }
 
     const rawURL = typeof asset.url === "string" ? asset.url : "";
@@ -210,9 +217,17 @@ function normalizeDesktopManifest(manifest, requestedChannel) {
       asset.sig !== `${rawURL}.minisig` ||
       (selectedBase && selectedBase !== base)
     ) {
-      return null;
+      return false;
     }
     selectedBase = base;
+    return true;
+  };
+  for (const [group, key, name] of DESKTOP_ASSETS) {
+    if (!validateAsset(group, key, name)) return null;
+  }
+  for (const [group, key, name] of DESKTOP_OPTIONAL_ASSETS) {
+    if (manifest?.[group]?.[key] === undefined) continue;
+    if (!validateAsset(group, key, name)) return null;
   }
   return selectedBase ? { parsed } : null;
 }
@@ -225,6 +240,10 @@ export function desktopReleaseModel(manifest, requestedChannel) {
     name,
     manifest[group][key].url,
   ]));
+  for (const [group, key, name] of DESKTOP_OPTIONAL_ASSETS) {
+    const asset = manifest?.[group]?.[key];
+    if (asset && typeof asset.url === "string") assets[name] = asset.url;
+  }
   return {
     channel: parsed.channel,
     version: parsed.tag,
@@ -268,11 +287,15 @@ export function desktopGitHubReleaseModel(release) {
   }
   if (DESKTOP_ASSETS.some(([, , name]) => !found[name])) return null;
 
+  const assets = Object.fromEntries(DESKTOP_ASSETS.map(([, , name]) => [name, found[name]]));
+  for (const [, , name] of DESKTOP_OPTIONAL_ASSETS) {
+    if (found[name]) assets[name] = found[name];
+  }
   return {
     channel: "stable",
     version: match[1],
     displayVersion: match[1].slice(1),
-    assets: Object.fromEntries(DESKTOP_ASSETS.map(([, , name]) => [name, found[name]])),
+    assets,
     changelogURL: "https://reasonix.io/changelog/",
   };
 }

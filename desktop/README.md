@@ -148,6 +148,10 @@ not depend on homepage badge semantics. Self-update behavior by platform:
   that, in-app authorized updates work. If Polkit/`pkexec` is unavailable, use
   the same manual command. Failed installs leave the running app intact so you
   can retry; successful installs are managed by apt/dpkg and are not auto-downgraded.
+- **Linux Fedora/RHEL (`.rpm`)** — manual update only. The privileged in-app
+  update path is apt/dpkg-specific, so the `.rpm` ships without the update
+  helper/Polkit policy; rpm installs detect newer versions and link to the
+  download page (`sudo dnf install ./Reasonix-linux-amd64.rpm` to install).
 - **Windows** — download, verify the minisign signature, then run the per-user
   NSIS installer (no admin rights needed).
 - **macOS** — *not* self-updating yet. The build is unsigned/un-notarized, so an

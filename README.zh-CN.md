@@ -78,7 +78,7 @@ brew install esengine/reasonix/reasonix   # macOS
 | --- | --- | --- |
 | macOS | 通用 `.dmg` 或 `.zip` | Apple Silicon / Intel |
 | Windows | 安装器 `.exe` 或便携 `.zip` | x64 / ARM64 |
-| Linux | `.deb` 或 `.tar.gz` | x64 |
+| Linux | `.deb`、`.rpm` 或 `.tar.gz` | x64 |
 
 Windows 安装器通过 [SignPath.io](https://signpath.io/) 完成代码签名，证书由
 [SignPath 基金会](https://signpath.org/) 免费提供。

@@ -84,7 +84,7 @@ for the latest desktop build.
 | --- | --- | --- |
 | macOS | Universal `.dmg` or `.zip` | Apple Silicon / Intel |
 | Windows | Installer `.exe` or portable `.zip` | x64 / ARM64 |
-| Linux | `.deb` or `.tar.gz` | x64 |
+| Linux | `.deb`, `.rpm`, or `.tar.gz` | x64 |
 
 Windows installers are code-signed through [SignPath.io](https://signpath.io/)
 with a free certificate provided by the [SignPath Foundation](https://signpath.org/).

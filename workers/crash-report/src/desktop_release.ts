@@ -15,6 +15,11 @@ const DESKTOP_DOWNLOAD_ASSETS = [
   ["downloads", "Reasonix-darwin-universal.dmg", "Reasonix-darwin-universal.dmg"],
   ["downloads", "Reasonix-windows-amd64.zip", "Reasonix-windows-amd64.zip"],
 ] as const;
+// Optional download assets follow the same strict validation when present, but
+// immutable manifests published before they existed stay valid without them.
+const DESKTOP_OPTIONAL_DOWNLOAD_ASSETS = [
+  ["downloads", "Reasonix-linux-amd64.rpm", "Reasonix-linux-amd64.rpm"],
+] as const;
 const SHA256 = /^[0-9a-f]{64}$/;
 const MAX_RELEASE_ASSET_SIZE = 1 << 30;
 
@@ -261,10 +266,7 @@ function normalizeDesktopManifest(
   const legacyManifest = manifest.downloads === undefined || manifest.downloads === null;
   const allowedBases = desktopAssetBases(version, channel, legacyManifest);
   let selectedBase = "";
-  const requiredAssets = legacyManifest
-    ? DESKTOP_UPDATER_ASSETS
-    : [...DESKTOP_UPDATER_ASSETS, ...DESKTOP_DOWNLOAD_ASSETS];
-  for (const [groupName, key, fileName] of requiredAssets) {
+  const validateAsset = (groupName: string, key: string, fileName: string): boolean => {
     const group = objectValue(manifest[groupName]);
     const asset = objectValue(group?.[key]);
     if (
@@ -275,7 +277,7 @@ function normalizeDesktopManifest(
       typeof asset.sha256 !== "string" ||
       !SHA256.test(asset.sha256)
     ) {
-      return null;
+      return false;
     }
 
     const rawURL = asset.url;
@@ -289,9 +291,20 @@ function normalizeDesktopManifest(
       asset.sig !== `${rawURL}.minisig` ||
       (selectedBase && selectedBase !== base)
     ) {
-      return null;
+      return false;
     }
     selectedBase = base;
+    return true;
+  };
+  const requiredAssets = legacyManifest
+    ? DESKTOP_UPDATER_ASSETS
+    : [...DESKTOP_UPDATER_ASSETS, ...DESKTOP_DOWNLOAD_ASSETS];
+  for (const [groupName, key, fileName] of requiredAssets) {
+    if (!validateAsset(groupName, key, fileName)) return null;
+  }
+  for (const [groupName, key, fileName] of DESKTOP_OPTIONAL_DOWNLOAD_ASSETS) {
+    if (objectValue(manifest[groupName])?.[key] === undefined) continue;
+    if (!validateAsset(groupName, key, fileName)) return null;
   }
 
   return selectedBase ? manifest : null;
