@@ -44,6 +44,13 @@ contents:
     dst: /usr/bin/reasonix-launcher
     file_info:
       mode: 0755
+  # Pre-v1.20 packages used Exec=reasonix-guard. Keep a permanent symlink so
+  # cached desktop entries / old pinned launchers still start the thin launcher
+  # (which strips legacy "launch --detach" tokens) instead of failing with
+  # "Program 'reasonix-guard' not found".
+  - src: reasonix-launcher
+    dst: /usr/bin/reasonix-guard
+    type: symlink
   - src: ./build/bin/reasonix
     dst: /usr/bin/reasonix
     file_info:

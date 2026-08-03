@@ -314,6 +314,9 @@ linux)
 	dpkg-deb --field "$deb_path" Depends | grep -F 'pkexec' >/dev/null
 	dpkg-deb --contents "$deb_path" | grep -E 'usr/lib/reasonix/reasonix-update-helper' >/dev/null
 	dpkg-deb --contents "$deb_path" | grep -E 'usr/share/polkit-1/actions/io.reasonix.desktop.update.policy' >/dev/null
+	# Pre-v1.20 desktop entries called reasonix-guard; the package ships a
+	# symlink to the thin launcher so cached/pinned shortcuts keep working.
+	dpkg-deb --contents "$deb_path" | grep -E 'usr/bin/reasonix-guard' >/dev/null
 	# .rpm for Fedora/RHEL. Human-download artifact only — the in-app updater's
 	# privileged path is apt/dpkg-only, so the rpm ships without the update
 	# helper/Polkit policy and rpm installs use the manual update banner.
@@ -338,6 +341,8 @@ linux)
 	rpm -qp --requires "$rpm_path" | grep -x 'gtk3' >/dev/null
 	rpm -qpl "$rpm_path" | grep -E 'usr/bin/reasonix-desktop$' >/dev/null
 	rpm -qpl "$rpm_path" | grep -E 'usr/share/applications/reasonix.desktop$' >/dev/null
+	# Pre-v1.20 desktop entries called reasonix-guard; keep a launcher symlink.
+	rpm -qpl "$rpm_path" | grep -E 'usr/bin/reasonix-guard$' >/dev/null
 	if rpm -qpl "$rpm_path" | grep -E 'reasonix-update-helper|polkit-1/actions' >/dev/null; then
 		echo "rpm must not ship the apt-only update helper or Polkit policy" >&2
 		exit 1
