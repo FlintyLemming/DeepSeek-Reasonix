@@ -75,6 +75,14 @@ branch.
 
 ### Fixed
 
+- Fixed the Linux desktop stranding a hidden window when the close-to-tray
+  behavior had no working tray icon. The window close now hides to the tray
+  only after the StatusNotifierWatcher confirms the icon is registered; when
+  it is not (missing watcher, failed registration, or a host that rejects the
+  icon), closing quits the app instead of leaving an invisible, unreachable
+  process. The tray icon is now a dedicated 256x256 8-bit PNG rather than the
+  1024x1024 16-bit app icon, which some StatusNotifier hosts refuse to render
+  and which cost a ~4MiB D-Bus pixmap per registration.
 - Fixed Remote Workbench failing with only `initialize: workbench-desktop:
   connection closed` on fresh or cross-platform SSH hosts. Desktop now proves
   the exact Host CLI Build ID, provisions the matching verified release without

@@ -543,7 +543,13 @@ func (a *App) backgroundCloseHasRestorePath() bool {
 	if !a.startTray() {
 		return false
 	}
-	return backgroundCloseHasRestorePathFor(goruntime.GOOS, true, a.waitForTrayReady(backgroundCloseTrayReadyTimeout))
+	if !backgroundCloseHasRestorePathFor(goruntime.GOOS, true, a.waitForTrayReady(backgroundCloseTrayReadyTimeout)) {
+		return false
+	}
+	// A started tray is not yet a visible one: on Linux the icon must actually
+	// be registered with the StatusNotifierWatcher, or the hidden window would
+	// have no way back. Platforms without that confirmation report true.
+	return trayIconRegistered(backgroundCloseTrayReadyTimeout)
 }
 
 func (a *App) waitForTrayReady(timeout time.Duration) bool {
