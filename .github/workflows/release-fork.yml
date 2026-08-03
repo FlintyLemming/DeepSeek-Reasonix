@@ -1,0 +1,145 @@
+# Downstream (fork) release pipeline.
+#
+# Publishes Linux desktop artifacts for fork release tags: an upstream desktop
+# tag plus a fork suffix, e.g. upstream `desktop-v1.19.3` -> fork tag
+# `desktop-v1.19.3-fix.1`. The build reuses scripts/desktop-build.sh's
+# linux branch unchanged (tar.gz + .deb + .rpm); this workflow deliberately
+# skips minisign signing, the update manifest, and the R2 mirror — fork
+# installs update manually (dnf/apt install the downloaded package).
+#
+# Tag shape is validated strictly before any build runs:
+#   desktop-v<maj>.<min>.<patch>-fix.<rev>
+name: release-fork
+
+on:
+  push:
+    tags:
+      - "desktop-v*-fix.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Fork release tag to build (desktop-vX.Y.Z-fix.N)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve and validate fork release tag
+        id: resolve
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="$INPUT_TAG"
+          else
+            tag="$REF_NAME"
+          fi
+          pattern='^desktop-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-fix\.(0|[1-9][0-9]*)$'
+          if [[ ! "$tag" =~ $pattern ]]; then
+            echo "::error::fork release tag must look like desktop-vX.Y.Z-fix.N, got: $tag"
+            exit 1
+          fi
+          echo "tag=$tag" >>"$GITHUB_OUTPUT"
+          echo "version=${tag#desktop-}" >>"$GITHUB_OUTPUT"
+
+  build-linux:
+    needs: resolve
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: desktop/go.mod
+          cache: true
+          cache-dependency-path: desktop/go.sum
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      # Same toolchain as release-desktop.yml's linux leg: WebKitGTK 4.1
+      # (-tags webkit2_41 in desktop-build.sh) plus rpm for the .rpm smoke.
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgtk-3-dev libwebkit2gtk-4.1-dev rpm
+
+      - name: Install nfpm
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.46.3
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Build and package
+        run: scripts/desktop-build.sh linux/amd64 "${{ needs.resolve.outputs.version }}" stable
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum Reasonix-linux-amd64.tar.gz Reasonix-linux-amd64.deb Reasonix-linux-amd64.rpm > SHA256SUMS
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fork-dist-linux-amd64
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    needs: [resolve, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: fork-dist-linux-amd64
+          path: dist
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          base="${VERSION%-fix.*}"      # vX.Y.Z (upstream release line)
+          rev="${VERSION##*-fix.}"      # N (fork revision)
+          notes="$(mktemp)"
+          cat >"$notes" <<EOF
+          Fork build of Reasonix Desktop ${base#v} (fork revision ${rev}).
+
+          Base: upstream ${base} — https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-${base}
+
+          Downstream changes: Fedora/RHEL .rpm packaging; Linux close-to-tray
+          only hides when the tray icon is actually registered (otherwise the
+          window close quits), with a dedicated 256x256 8-bit tray icon.
+
+          Packages:
+          - \`Reasonix-linux-amd64.rpm\` — Fedora/RHEL: \`sudo dnf install ./Reasonix-linux-amd64.rpm\`
+          - \`Reasonix-linux-amd64.deb\` — Debian/Ubuntu: \`sudo apt install ./Reasonix-linux-amd64.deb\`
+          - \`Reasonix-linux-amd64.tar.gz\` — portable
+
+          Unsigned fork build; verify \`SHA256SUMS\` if you mirror the files.
+          EOF
+          if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* -R "$REPO" --clobber
+          else
+            gh release create "$TAG" dist/* -R "$REPO" \
+              --title "Reasonix Desktop ${base#v} (fork rev ${rev})" \
+              --notes-file "$notes"
+          fi
