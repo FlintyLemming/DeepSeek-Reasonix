@@ -201,7 +201,11 @@ func main() {
 			WebviewGpuIsDisabled: windowsWebview2GPUDisabled(),
 		},
 		Linux: &linux.Options{
-			ProgramName: "Reasonix",
+			// Must match StartupWMClass and the visible desktop id
+			// (reasonix-desktop.desktop). g_set_prgname feeds Wayland app_id /
+			// WM_CLASS; "Reasonix" left the dock without an icon because it did
+			// not match StartupWMClass=reasonix-desktop.
+			ProgramName: "reasonix-desktop",
 			// WebKitGTK GPU compositing is inconsistent across distros/drivers and
 			// is the one real cross-platform rough edge for a Go+webview stack:
 			// "always" can yield blank or flickering webviews on some setups, so

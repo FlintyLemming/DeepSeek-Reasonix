@@ -18,7 +18,10 @@ func legacyKeyringCredentialValue(key string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	defer svc.Conn.Close()
+	// NewSecretService uses dbus.SessionBus() — the process-wide shared
+	// connection. Closing it tears down every other SessionBus user in-process
+	// (notably fyne systray's StatusNotifierItem), so the tray icon appears
+	// briefly at startup then vanishes when legacy credential migration runs.
 
 	collection := svc.GetLoginCollection()
 	search := map[string]string{

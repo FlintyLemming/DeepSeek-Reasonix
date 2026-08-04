@@ -32,6 +32,7 @@
 !/build/linux/nfpm-rpm.yaml
 !/build/linux/rpm-postinstall.sh
 !/build/linux/rpm-postremove.sh
+!/build/linux/reasonix-desktop.desktop
 !/build/linux/reasonix.desktop
 !/build/linux/io.reasonix.desktop.update.policy
 !/build/linux/trayicon.png

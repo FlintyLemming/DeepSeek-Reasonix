@@ -27,6 +27,10 @@ depends:
   - libgtk-3-0
   - libwebkit2gtk-4.1-0
   - pkexec
+# Refresh desktop/icon caches and drop leftover duplicate desktop ids
+# (symlink reasonix.desktop / Pascal-case Reasonix.desktop) on install/upgrade.
+scripts:
+  postinstall: ./build/linux/rpm-postinstall.sh
 contents:
   - src: ./build/bin/reasonix-desktop
     dst: /usr/bin/reasonix-desktop
@@ -55,6 +59,12 @@ contents:
     dst: /usr/share/polkit-1/actions/io.reasonix.desktop.update.policy
     file_info:
       mode: 0644
+  - src: ./build/linux/reasonix-desktop.desktop
+    dst: /usr/share/applications/reasonix-desktop.desktop
+    file_info:
+      mode: 0644
+  # Hidden compat id for pre-rename bookmarks/pins. Must be a real NoDisplay
+  # entry — a symlink would register a second visible app id in GNOME/KDE.
   - src: ./build/linux/reasonix.desktop
     dst: /usr/share/applications/reasonix.desktop
     file_info:

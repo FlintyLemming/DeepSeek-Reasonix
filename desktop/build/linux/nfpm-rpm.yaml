@@ -55,6 +55,12 @@ contents:
     dst: /usr/bin/reasonix
     file_info:
       mode: 0755
+  - src: ./build/linux/reasonix-desktop.desktop
+    dst: /usr/share/applications/reasonix-desktop.desktop
+    file_info:
+      mode: 0644
+  # Hidden compat id for pre-rename bookmarks/pins. Must be a real NoDisplay
+  # entry — a symlink would register a second visible app id in GNOME/KDE.
   - src: ./build/linux/reasonix.desktop
     dst: /usr/share/applications/reasonix.desktop
     file_info:

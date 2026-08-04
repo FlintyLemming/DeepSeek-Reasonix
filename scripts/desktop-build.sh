@@ -280,8 +280,13 @@ linux)
 		'Exec=reasonix-launcher' \
 		'Icon=reasonix-desktop' \
 		'StartupWMClass=reasonix-desktop'; do
-		grep -F -x -q "$desktop_contract" build/linux/reasonix.desktop || { echo "Linux desktop entry missing: $desktop_contract" >&2; exit 1; }
+		grep -F -x -q "$desktop_contract" build/linux/reasonix-desktop.desktop || { echo "Linux desktop entry missing: $desktop_contract" >&2; exit 1; }
 	done
+	grep -F -x -q 'NoDisplay=true' build/linux/reasonix.desktop || { echo "compat reasonix.desktop must set NoDisplay=true" >&2; exit 1; }
+	if grep -F -x -q 'NoDisplay=true' build/linux/reasonix-desktop.desktop; then
+		echo "visible reasonix-desktop.desktop must not set NoDisplay" >&2
+		exit 1
+	fi
 	# Portable Linux tarball: desktop + thin launcher + one-shot migrator
 	# (compat name reasonix-guard) + CLI. After migrator runs, Guard self-deletes.
 	tar -czf "$ROOT/dist/${APPNAME}-linux-${arch}.tar.gz" -C build/bin \
@@ -340,7 +345,8 @@ linux)
 	rpm -qp --requires "$rpm_path" | grep -x 'webkit2gtk4.1' >/dev/null
 	rpm -qp --requires "$rpm_path" | grep -x 'gtk3' >/dev/null
 	rpm -qpl "$rpm_path" | grep -E 'usr/bin/reasonix-desktop$' >/dev/null
-	rpm -qpl "$rpm_path" | grep -E 'usr/share/applications/reasonix.desktop$' >/dev/null
+	rpm -qpl "$rpm_path" | grep -E 'usr/share/applications/reasonix-desktop\.desktop$' >/dev/null
+	rpm -qpl "$rpm_path" | grep -E 'usr/share/applications/reasonix\.desktop$' >/dev/null
 	# Pre-v1.20 desktop entries called reasonix-guard; keep a launcher symlink.
 	rpm -qpl "$rpm_path" | grep -E 'usr/bin/reasonix-guard$' >/dev/null
 	if rpm -qpl "$rpm_path" | grep -E 'reasonix-update-helper|polkit-1/actions' >/dev/null; then

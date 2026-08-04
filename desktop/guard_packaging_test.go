@@ -133,20 +133,60 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 		}
 	}
 
-	desktopEntry, err := os.ReadFile("build/linux/reasonix.desktop")
+	desktopEntry, err := os.ReadFile("build/linux/reasonix-desktop.desktop")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(desktopEntry), "Exec=reasonix-launcher") || strings.Contains(string(desktopEntry), "reasonix-guard") {
 		t.Fatal("Linux desktop entry must launch the permanent launcher without Guard")
 	}
+	if !strings.Contains(string(desktopEntry), "StartupWMClass=reasonix-desktop") {
+		t.Fatal("Linux desktop entry StartupWMClass must match ProgramName/app id reasonix-desktop")
+	}
+	if strings.Contains(string(desktopEntry), "NoDisplay=true") {
+		t.Fatal("visible Linux desktop entry must not set NoDisplay")
+	}
+	compatEntry, err := os.ReadFile("build/linux/reasonix.desktop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(compatEntry), "NoDisplay=true") {
+		t.Fatal("compat reasonix.desktop must set NoDisplay so the app grid shows Reasonix once")
+	}
+	if !strings.Contains(string(compatEntry), "StartupWMClass=reasonix-desktop") {
+		t.Fatal("compat reasonix.desktop StartupWMClass must match ProgramName/app id reasonix-desktop")
+	}
 	nfpmData, err := os.ReadFile("build/linux/nfpm.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
 	nfpm := string(nfpmData)
-	if !strings.Contains(nfpm, "dst: /usr/bin/reasonix-launcher") || strings.Contains(nfpm, "dst: /usr/bin/reasonix-guard") {
-		t.Fatal("Linux deb must install the permanent launcher and must not persist Guard")
+	if !strings.Contains(nfpm, "dst: /usr/bin/reasonix-launcher") {
+		t.Fatal("Linux deb must install the permanent launcher")
+	}
+	if !strings.Contains(nfpm, "dst: /usr/share/applications/reasonix-desktop.desktop") {
+		t.Fatal("Linux deb must install reasonix-desktop.desktop so Wayland app_id matches")
+	}
+	if !strings.Contains(nfpm, "dst: /usr/share/applications/reasonix.desktop") {
+		t.Fatal("Linux deb must install hidden compat reasonix.desktop")
+	}
+	if strings.Contains(nfpm, "dst: /usr/share/applications/reasonix.desktop\n    type: symlink") {
+		t.Fatal("compat reasonix.desktop must be a NoDisplay file, not a symlink to the visible entry")
+	}
+	// Compat symlink only for the old Guard binary name — must not ship a real Guard payload.
+	if !strings.Contains(nfpm, "dst: /usr/bin/reasonix-guard") || !strings.Contains(nfpm, "type: symlink") {
+		t.Fatal("Linux deb must keep reasonix-guard as a launcher compat symlink")
+	}
+	nfpmRPMData, err := os.ReadFile("build/linux/nfpm-rpm.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nfpmRPM := string(nfpmRPMData)
+	if !strings.Contains(nfpmRPM, "dst: /usr/share/applications/reasonix-desktop.desktop") {
+		t.Fatal("Linux rpm must install reasonix-desktop.desktop so Wayland app_id matches")
+	}
+	if strings.Contains(nfpmRPM, "dst: /usr/share/applications/reasonix.desktop\n    type: symlink") {
+		t.Fatal("rpm compat reasonix.desktop must be a NoDisplay file, not a symlink")
 	}
 
 	windowsData, err := os.ReadFile("build/windows/installer/project.nsi")

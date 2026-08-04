@@ -7,6 +7,3 @@ Icon=reasonix-desktop
 Categories=Development;
 Terminal=false
 StartupWMClass=reasonix-desktop
-# Hidden compat id for pre-rename bookmarks/pins (reasonix.desktop). The visible
-# launcher is reasonix-desktop.desktop so the app grid shows Reasonix once.
-NoDisplay=true

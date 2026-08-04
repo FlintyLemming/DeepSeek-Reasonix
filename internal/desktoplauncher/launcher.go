@@ -111,8 +111,11 @@ func runLegacyMigratorIfNeeded(installRoot string) error {
 	if err != nil {
 		return fmt.Errorf("inspect legacy migrator: %w", err)
 	}
+	// Package installs keep reasonix-guard as a permanent symlink to
+	// reasonix-launcher so pre-v1.20 desktop entries still start. That path is
+	// not a legacy migrator binary — skip it instead of failing the launch.
 	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("legacy migrator is not a regular file")
+		return nil
 	}
 
 	cmd := exec.Command(migratorPath, "--install-root", installRoot, "--no-relaunch")
